@@ -13,6 +13,8 @@ import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.Callback;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.io.File;
 
 /**
  * NativeModule that allows JS to open emails sending apps chooser.
@@ -52,8 +54,8 @@ public class RNMailModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void mail(ReadableMap options, Callback callback) {
-    Intent i = new Intent(Intent.ACTION_SENDTO);
-    i.setData(Uri.parse("mailto:"));
+    Intent i = new Intent(Intent.ACTION_SEND_MULTIPLE);
+    i.setType("message/rfc822");
 
     if (options.hasKey("subject") && !options.isNull("subject")) {
       i.putExtra(Intent.EXTRA_SUBJECT, options.getString("subject"));
@@ -71,12 +73,29 @@ public class RNMailModule extends ReactContextBaseJavaModule {
     if (options.hasKey("ccRecipients") && !options.isNull("ccRecipients")) {
       ReadableArray ccRecipients = options.getArray("ccRecipients");
       i.putExtra(Intent.EXTRA_CC, readableArrayToStringArray(ccRecipients));
-    }
+      }
 
     if (options.hasKey("bccRecipients") && !options.isNull("bccRecipients")) {
       ReadableArray bccRecipients = options.getArray("bccRecipients");
       i.putExtra(Intent.EXTRA_BCC, readableArrayToStringArray(bccRecipients));
     }
+    if (options.hasKey("attachment") && !options.isNull("attachment")) {
+      ReadableArray r = options.getArray("attachment");
+      int length = r.size();
+      ArrayList<Uri> uris = new ArrayList<Uri>();
+      for (int keyIndex = 0; keyIndex < length; keyIndex++) {
+        ReadableMap clip = r.getMap(keyIndex);
+        if (clip.hasKey("path") && !clip.isNull("path")){
+          String path = clip.getString("path");
+          File fileInput = new File(path);
+          // fileInput.setReadable(true, false);//
+          Uri u = Uri.fromFile(fileInput);
+          uris.add(u);
+        }
+      }
+      i.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+    }
+
 
     PackageManager manager = reactContext.getPackageManager();
     List<ResolveInfo> list = manager.queryIntentActivities(i, 0);
